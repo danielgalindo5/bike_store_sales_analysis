@@ -29,6 +29,9 @@ Execute the SQL scripts in the following order:
 5. `sql/04_queries.sql`
 
 ## Database Design
+
+<img width="1776" height="1066" alt="bike_store" src="https://github.com/user-attachments/assets/6d2eb10a-cc42-4ede-9d33-2e3acd6013b4" />
+
 Key design decisions:
 Primary Keys
   - Composite primary key on `order_items (order_id, item_id)`
