@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bike Store — Revenue &amp; Discount Analysis | Daniel Galindo</title>
+<meta name="description" content="Revenue, product mix and discount-leakage analysis of 1,615 bike store orders (2016–2018). SQL → SQLite → Python. Built by Daniel Galindo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0D1520; --ink2:#1E2A38; --paper:#E9ECF0; --panel:#fff;
+  --rule:#CFD6DE; --rule2:#E4E9EE; --muted:#5F6E7E;
+  --accent:#1B3FCC; --accent-soft:#E4E8FA;
+  --flag:#B3441E; --flag-soft:#F8E8E1; --pos:#0F6E4E;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --disp:"Archivo",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 72px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- header ---------- */
+header{border-bottom:2px solid var(--ink);padding:34px 0 18px;margin-bottom:0}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  font-weight:600;margin:0 0 10px}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(28px,5.2vw,50px);line-height:1.02;letter-spacing:-.025em;
+  margin:0 0 12px;max-width:16ch}
+.sub{max-width:60ch;color:var(--ink2);margin:0 0 22px;font-size:16px}
+.meta{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--rule)}
+.meta div{flex:1 1 130px;padding:10px 14px 10px 0;border-right:1px solid var(--rule2);min-width:0}
+.meta div:last-child{border-right:0}
+.meta dt{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 3px}
+.meta dd{margin:0;font-size:13.5px;font-weight:500}
+
+/* ---------- section ---------- */
+section{padding-top:44px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:22px}
+.sec-head h2{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:-.01em;margin:0}
+.sec-head .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-left:auto;white-space:nowrap}
+
+/* ---------- ledger (signature) ---------- */
+.ledger{background:var(--panel);border:1px solid var(--rule);padding:22px}
+.ledger-bar{display:flex;height:38px;border:1px solid var(--ink);margin:16px 0 4px;overflow:hidden}
+.ledger-bar span{display:block;height:100%}
+.seg-keep{background:var(--accent)}
+.seg-drop{background:repeating-linear-gradient(135deg,var(--flag),var(--flag) 3px,#C25738 3px,#C25738 6px)}
+.seg-gap{background:repeating-linear-gradient(135deg,#C6CEd6,#C6CED6 3px,#D8DEE4 3px,#D8DEE4 6px)}
+.ledger-rows{margin-top:18px;border-top:1px solid var(--rule2)}
+.lrow{display:grid;grid-template-columns:14px 1fr auto;gap:12px;align-items:start;padding:11px 0;border-bottom:1px solid var(--rule2)}
+.lrow:last-child{border-bottom:0}
+.swatch{width:11px;height:11px;margin-top:6px;border:1px solid var(--ink)}
+.lrow b{font-weight:600;display:block;font-size:14px}
+.lrow small{color:var(--muted);font-size:12.5px;display:block;line-height:1.45}
+.lrow .val{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.verdict{margin-top:18px;padding:13px 15px;background:var(--flag-soft);border-left:3px solid var(--flag);font-size:13.5px}
+.verdict b{font-weight:600}
+
+/* ---------- kpi ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--rule2);background:var(--panel)}
+.kpi{padding:16px 16px 18px;border-right:1px solid var(--rule2);border-bottom:1px solid var(--rule2)}
+.kpi dt{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.kpi dd{margin:0;font-family:var(--mono);font-weight:600;font-size:clamp(20px,3.1vw,26px);letter-spacing:-.02em;line-height:1}
+.kpi .note{font-size:11.5px;color:var(--muted);margin-top:7px;font-family:var(--sans)}
+.kpi.flag dd{color:var(--flag)}
+
+/* ---------- grid / cards ---------- */
+.grid{display:grid;gap:20px;grid-template-columns:repeat(12,1fr)}
+.card{background:var(--panel);border:1px solid var(--rule);padding:18px 18px 14px;min-width:0}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}
+@media(max-width:860px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
+.card h3{font-family:var(--disp);font-weight:600;font-size:15px;margin:0 0 3px;letter-spacing:-.005em}
+.card p.cap{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.45}
+.chart{width:100%}
+.finding{margin-top:12px;padding-top:11px;border-top:1px solid var(--rule2);font-size:12.5px;color:var(--ink2);line-height:1.5}
+.finding b{font-weight:600}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  text-align:right;padding:0 0 8px;border-bottom:1px solid var(--ink);font-weight:500}
+th:first-child{text-align:left}
+td{padding:8px 0;border-bottom:1px solid var(--rule2);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;font-family:var(--sans)}
+tr:last-child td{border-bottom:0}
+.rank{color:var(--muted);font-family:var(--mono);font-size:11.5px;padding-right:9px}
+
+/* ---------- footer ---------- */
+footer{margin-top:56px;border-top:2px solid var(--ink);padding-top:22px;display:flex;flex-wrap:wrap;gap:26px;
+  justify-content:space-between;align-items:flex-start}
+footer .who{font-family:var(--disp);font-weight:600;font-size:16px;margin:0 0 4px}
+footer p{margin:0;color:var(--muted);font-size:13px;max-width:46ch}
+.links{display:flex;gap:9px;flex-wrap:wrap}
+.links a{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+  color:var(--ink);border:1px solid var(--ink);padding:8px 13px;transition:background .15s,color .15s}
+.links a:hover,.links a:focus-visible{background:var(--ink);color:var(--panel)}
+a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stack{margin-top:26px;padding:16px 18px;background:var(--panel);border:1px solid var(--rule);font-size:13px;color:var(--ink2)}
+.stack b{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  display:block;margin-bottom:6px;font-weight:500}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Portfolio 01 &nbsp;/&nbsp; Retail analytics</p>
+  <h1>Where $889,872 of bike revenue went</h1>
+  <p class="sub">A relational sales database migrated from MySQL to SQLite, then queried for revenue mix, store performance and discount behaviour across 1,615 orders. The headline number above is the gap between list price and what customers actually paid.</p>
+  <dl class="meta">
+    <div><dt>Dataset</dt><dd>BikeStores &middot; 9 tables</dd></div>
+    <div><dt>Coverage</dt><dd class="mono">Jan 2016 – Dec 2018</dd></div>
+    <div><dt>Order lines</dt><dd class="mono">4,722</dd></div>
+    <div><dt>Stack</dt><dd>MySQL, SQLite, Python</dd></div>
+    <div><dt>Analyst</dt><dd>Daniel Galindo</dd></div>
+  </dl>
+</header>
+
+<!-- ================= COVERAGE LEDGER ================= -->
+<section>
+  <div class="sec-head"><h2>Coverage ledger</h2><span class="tag">Read this before the charts</span></div>
+  <div class="ledger">
+    <p style="margin:0;font-size:13.5px;color:var(--ink2);max-width:70ch">The database advertises three calendar years. It does not contain three usable years. Every trend chart below is drawn on the full window, with the thin period marked, so the shape of the data is visible rather than hidden.</p>
+    <div class="ledger-bar" role="img" aria-label="36-month span: 28 months of dense data, 1 month with no orders, 7 months of sparse data">
+      <span class="seg-keep" style="flex:28"></span>
+      <span class="seg-gap" style="flex:1"></span>
+      <span class="seg-drop" style="flex:7"></span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted)">
+      <span>Jan 2016</span><span>Apr 2018</span><span>Dec 2018</span>
+    </div>
+    <div class="ledger-rows">
+      <div class="lrow"><span class="swatch" style="background:var(--accent)"></span>
+        <div><b>28 months of dense trading</b><small>Jan 2016 – Apr 2018. Carries 99.3% of all revenue and 1,603 of 1,615 orders.</small></div>
+        <span class="val">$7,638,588</span></div>
+      <div class="lrow"><span class="swatch seg-gap"></span>
+        <div><b>1 month with zero orders</b><small>May 2018 is absent entirely — not a slow month, an empty one.</small></div>
+        <span class="val">$0</span></div>
+      <div class="lrow"><span class="swatch seg-drop"></span>
+        <div><b>7 months of residual rows</b><small>Jun – Dec 2018 hold 12 orders between them. Too thin to read as a trend or to forecast from.</small></div>
+        <span class="val">$50,529</span></div>
+      <div class="lrow"><span class="swatch" style="background:#fff"></span>
+        <div><b>Other completeness notes</b><small>170 orders (10.5%) have no shipped date. 14 of 321 catalogue products were never ordered.</small></div>
+        <span class="val">—</span></div>
+    </div>
+    <div class="verdict"><b>Working rule applied throughout:</b> totals use all 1,615 orders, but any statement about growth, seasonality or year-over-year change is restricted to Jan 2016 – Apr 2018. A 2018 full-year figure would be wrong by roughly a factor of two.</div>
+  </div>
+</section>
+
+<!-- ================= KPIs ================= -->
+<section>
+  <div class="sec-head"><h2>Headline figures</h2><span class="tag">All 1,615 orders</span></div>
+  <dl class="kpis">
+    <div class="kpi"><dt>Net revenue</dt><dd>$7.69M</dd><div class="note">After discounts</div></div>
+    <div class="kpi"><dt>List value</dt><dd>$8.58M</dd><div class="note">Before discounts</div></div>
+    <div class="kpi flag"><dt>Discount given</dt><dd>$889.9K</dd><div class="note">10.4% of list value</div></div>
+    <div class="kpi"><dt>Orders</dt><dd>1,615</dd><div class="note">4,722 order lines</div></div>
+    <div class="kpi"><dt>Avg order value</dt><dd>$4,761</dd><div class="note">4.38 units per order</div></div>
+    <div class="kpi"><dt>Customers</dt><dd>1,445</dd><div class="note">1.12 orders each</div></div>
+    <div class="kpi"><dt>Units sold</dt><dd>7,078</dd><div class="note">278 distinct products</div></div>
+    <div class="kpi"><dt>Completion</dt><dd>89.5%</dd><div class="note">45 orders rejected</div></div>
+  </dl>
+</section>
+
+<!-- ================= TREND ================= -->
+<section>
+  <div class="sec-head"><h2>Revenue over time</h2><span class="tag">Monthly, Jan 2016 – Dec 2018</span></div>
+  <div class="grid">
+    <div class="card c12">
+      <h3>Monthly net revenue</h3>
+      <p class="cap">Bars are monthly revenue; the line is a 3-month moving average. The hatched region marks the sparse window described in the ledger.</p>
+      <div class="chart" id="ch-monthly"></div>
+      <div class="finding"><b>Reading it:</b> across the 28 dense months, revenue climbs steadily — 2016 averaged $202K/month, 2017 averaged $287K/month, and Jan–Apr 2018 averaged $441K/month. April 2018 ($817,922) is the largest month in the file by a wide margin and lands immediately before the data thins out, so it should be treated as a boundary artifact rather than a demand spike until it can be confirmed against source systems.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section>
+  <div class="sec-head"><h2>Discount behaviour</h2><span class="tag">Pricing analysis</span></div>
+  <div class="grid">
+    <div class="card c7">
+      <h3>Where the $889,872 goes</h3>
+      <p class="cap">Only four discount rates appear anywhere in the data: 5%, 7%, 10% and 20%. Bars show revenue booked at each rate; the marked portion is the discount given away.</p>
+      <div class="chart" id="ch-disc"></div>
+      <div class="finding"><b>The 20% rate is the whole story.</b> It covers 25.5% of order lines but produces 47.2% of total discount given — $419,791. Cutting that rate to 10% on the same lines would have returned roughly $210K to the top line.</div>
+    </div>
+    <div class="card c5">
+      <h3>Discount depth by price tier</h3>
+      <p class="cap">Average discount rate applied, grouped by product list price.</p>
+      <div class="chart" id="ch-tier"></div>
+      <div class="finding"><b>The discount is flat.</b> A $200 children's bike and a $6,000 road bike both get an average of about 10.5% off. Average depth ranges only from 10.41% to 10.63% across all four price tiers, and from 10.21% to 11.13% across all seven categories. Discounts here are not responding to price, margin or category — they look assigned rather than decided.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MIX ================= -->
+<section>
+  <div class="sec-head"><h2>What sells</h2><span class="tag">Category, brand, product</span></div>
+  <div class="grid">
+    <div class="card c6">
+      <h3>Revenue by category</h3>
+      <p class="cap">Net revenue, all seven categories.</p>
+      <div class="chart" id="ch-cat"></div>
+      <div class="finding"><b>Volume and value disagree.</b> Cruisers sell the most units (2,063) but rank third in revenue. Road Bikes sell 559 units — a quarter of the cruiser volume — and out-earn them by $670K.</div>
+    </div>
+    <div class="card c6">
+      <h3>Revenue by brand</h3>
+      <p class="cap">Net revenue. Nine brands carry sales; one has none.</p>
+      <div class="chart" id="ch-brand"></div>
+      <div class="finding"><b>Concentration risk:</b> Trek alone accounts for 59.9% of revenue — Electra, the next brand, holds 15.7%. A supply disruption or margin change with a single vendor would move the whole business.</div>
+    </div>
+    <div class="card c12">
+      <h3>Top 10 products by revenue</h3>
+      <p class="cap">Ranked by net revenue, with units and share of total.</p>
+      <div id="tb-prod"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GEOGRAPHY ================= -->
+<section>
+  <div class="sec-head"><h2>Stores and staff</h2><span class="tag">Three locations, six selling staff</span></div>
+  <div class="grid">
+    <div class="card c5">
+      <h3>Revenue by store</h3>
+      <p class="cap">Net revenue by location (NY, CA, TX).</p>
+      <div class="chart" id="ch-store"></div>
+      <div class="finding"><b>Baldwin Bikes (NY) is 67.8% of the business</b> on 67.7% of orders. Rowlett (TX) turns over $867K — one sixth of Baldwin — despite drawing from a comparable metro. Two reps at Baldwin — Marcelene Boyer and Venita Daniel — personally account for $5.22M, the entire store. Worth checking headcount before reading Rowlett as a demand problem.</div>
+    </div>
+    <div class="card c7">
+      <h3>Staff performance</h3>
+      <p class="cap">Six of the ten people in the staff table appear on orders. The other four are managers with no attributed sales.</p>
+      <div id="tb-staff"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <p class="who">Daniel Galindo</p>
+    <p>Quality Control Inspector II with a B.S. in Mathematics, moving into data analytics. This dashboard is built from the same SQLite database and Python notebook in the repository — every figure on the page is reproducible from the source.</p>
+  </div>
+  <div class="links">
+    <a href="https://github.com/danielgalindo5/bike_store_sales_analysis">Repository</a>
+    <a href="https://www.linkedin.com/in/danielgalindo5">LinkedIn</a>
+    <a href="https://github.com/danielgalindo5">GitHub</a>
+  </div>
+</footer>
+
+<div class="stack">
+  <b>Method</b>
+  Schema and 4,722 order lines migrated from MySQL to SQLite with a Python script that maps column types and preserves keys. Revenue is computed per order line as <span class="mono">quantity × list_price × (1 − discount)</span> and rolled up with pandas. Joins span orders, order_items, products, brands, categories, stores, staffs and customers. Charts on this page are hand-built SVG with no charting library.
+</div>
+
+</div>
+
+<script>
+const D = {"kpi":{"revenue":7689116.56,"gross":8578988.88,"discount_given":889872.32,"discount_rate":10.37,"orders":1615,"units":7078,"customers":1445,"aov":4761.06,"lines":4722,"products_sold":278,"catalog":321},"monthly":[{"m":"2016-01","rev":215146.42,"orders":50},{"m":"2016-02","rev":156112.32,"orders":49},{"m":"2016-03","rev":180600.33,"orders":55},{"m":"2016-04","rev":167144.05,"orders":43},{"m":"2016-05","rev":205270.01,"orders":51},{"m":"2016-06","rev":210562.12,"orders":45},{"m":"2016-07","rev":199556.81,"orders":50},{"m":"2016-08","rev":225657.38,"orders":63},{"m":"2016-09","rev":273091.61,"orders":67},{"m":"2016-10","rev":212078.08,"orders":64},{"m":"2016-11","rev":182329.41,"orders":43},{"m":"2016-12","rev":199829.98,"orders":55},{"m":"2017-01","rev":285616.48,"orders":50},{"m":"2017-02","rev":312923.75,"orders":57},{"m":"2017-03","rev":308911.9,"orders":67},{"m":"2017-04","rev":227290.91,"orders":57},{"m":"2017-05","rev":268233.24,"orders":57},{"m":"2017-06","rev":378865.65,"orders":63},{"m":"2017-07","rev":229995.4,"orders":52},{"m":"2017-08","rev":290553.46,"orders":65},{"m":"2017-09","rev":293405.26,"orders":53},{"m":"2017-10","rev":310328.31,"orders":65},{"m":"2017-11","rev":281577.9,"orders":55},{"m":"2017-12","rev":259505.98,"orders":47},{"m":"2018-01","rev":381430.1,"orders":52},{"m":"2018-02","rev":200658.06,"orders":35},{"m":"2018-03","rev":363990.99,"orders":68},{"m":"2018-04","rev":817921.86,"orders":125},{"m":"2018-06","rev":188.99,"orders":1},{"m":"2018-07","rev":11337.9,"orders":4},{"m":"2018-08","rev":8377.81,"orders":2},{"m":"2018-09","rev":8963.96,"orders":1},{"m":"2018-10","rev":3781.13,"orders":1},{"m":"2018-11","rev":11362.01,"orders":2},{"m":"2018-12","rev":6516.97,"orders":1}],"category":[{"label":"Mountain Bikes","rev":2715079.53,"units":1755,"orders":866},{"label":"Road Bikes","rev":1665098.49,"units":559,"orders":315},{"label":"Cruisers Bicycles","rev":995032.62,"units":2063,"orders":959},{"label":"Electric Bikes","rev":916684.78,"units":315,"orders":202},{"label":"Cyclocross Bicycles","rev":711011.84,"units":394,"orders":245},{"label":"Comfort Bicycles","rev":394020.1,"units":813,"orders":472},{"label":"Children Bicycles","rev":292189.2,"units":1179,"orders":635}],"brand":[{"label":"Trek","rev":4602754.35,"units":1839,"orders":883},{"label":"Electra","rev":1205320.82,"units":2612,"orders":1096},{"label":"Surly","rev":949507.06,"units":908,"orders":531},{"label":"Sun Bicycles","rev":341994.93,"units":731,"orders":393},{"label":"Haro","rev":185384.55,"units":331,"orders":196},{"label":"Heller","rev":171459.08,"units":138,"orders":97},{"label":"Pure Cycles","rev":149476.34,"units":376,"orders":232},{"label":"Ritchey","rev":78898.95,"units":118,"orders":77},{"label":"Strider","rev":4320.48,"units":25,"orders":16}],"store":[{"label":"Baldwin Bikes","rev":5215751.28,"units":4779,"orders":1093},{"label":"Santa Cruz Bikes","rev":1605823.04,"units":1516,"orders":348},{"label":"Rowlett Bikes","rev":867542.24,"units":783,"orders":174}],"state":[{"label":"NY","rev":5215751.28,"units":4779,"orders":1093},{"label":"CA","rev":1605823.04,"units":1516,"orders":348},{"label":"TX","rev":867542.24,"units":783,"orders":174}],"products":[{"label":"Trek Slash 8 27.5 - 2016","rev":555558.61,"units":154,"orders":101},{"label":"Trek Conduit+ - 2016","rev":389248.7,"units":145,"orders":101},{"label":"Trek Fuel EX 8 29 - 2016","rev":368472.73,"units":143,"orders":97},{"label":"Surly Straggler 650b - 2016","rev":226765.55,"units":151,"orders":97},{"label":"Trek Domane SLR 6 Disc - 2017","rev":211584.62,"units":43,"orders":28},{"label":"Surly Straggler - 2016","rev":203507.62,"units":147,"orders":97},{"label":"Trek Remedy 29 Carbon Frameset - 2016","rev":203380.87,"units":125,"orders":85},{"label":"Trek Powerfly 8 FS Plus - 2017","rev":188249.62,"units":41,"orders":25},{"label":"Trek Madone 9.2 - 2017","rev":175899.65,"units":39,"orders":26},{"label":"Trek Silque SLR 8 Women's - 2017","rev":174524.73,"units":29,"orders":19}],"staff":[{"label":"Marcelene Boyer","rev":2624120.65,"units":2419,"orders":553},{"label":"Venita Daniel","rev":2591630.62,"units":2360,"orders":540},{"label":"Genna Serrano","rev":853287.36,"units":831,"orders":184},{"label":"Mireya Copeland","rev":752535.68,"units":685,"orders":164},{"label":"Kali Vargas","rev":463918.3,"units":412,"orders":88},{"label":"Layla Terrell","rev":403623.94,"units":371,"orders":86}],"status":[{"label":"Pending","n":62},{"label":"Processing","n":63},{"label":"Rejected","n":45},{"label":"Completed","n":1445}],"discount_bands":[{"label":"5%","rev":2138329.44,"units":1836,"lines":1205,"leak":112543.65,"avg_price":1211.43},{"label":"7%","rev":2026738.18,"units":1724,"lines":1156,"leak":152550.19,"avg_price":1259.37},{"label":"10%","rev":1844883.02,"units":1710,"lines":1158,"leak":204987.0,"avg_price":1198.51},{"label":"20%","rev":1679165.92,"units":1808,"lines":1203,"leak":419791.48,"avg_price":1182.81}],"price_tiers":[{"label":"<$500","avg_disc":10.57,"units":2915,"rev":929980.18,"leak":108771.43},{"label":"$500-1k","avg_disc":10.41,"units":2000,"rev":1244664.37,"leak":146457.63},{"label":"$1k-2k","avg_disc":10.63,"units":899,"rev":1256041.05,"leak":147095.77},{"label":"$2k+","avg_disc":10.59,"units":1264,"rev":4258430.96,"leak":487547.49}],"cat_disc":[{"label":"Cyclocross Bicycles","avg_disc":11.13},{"label":"Children Bicycles","avg_disc":10.79},{"label":"Road Bikes","avg_disc":10.56},{"label":"Electric Bikes","avg_disc":10.51},{"label":"Mountain Bikes","avg_disc":10.5},{"label":"Cruisers Bicycles","avg_disc":10.44},{"label":"Comfort Bicycles","avg_disc":10.21}],"quality":{"total_lines":4722,"orders_total":1615,"months_span":36,"months_full":28,"rev_after_apr18":50528.77,"orders_after_apr18":12,"null_shipped":170,"products_never_sold":14}};
+
+/* ---------- helpers ---------- */
+const usd = n => '$' + Math.round(n).toLocaleString('en-US');
+const usdK = n => n >= 1e6 ? '$' + (n/1e6).toFixed(2) + 'M' : n >= 1e3 ? '$' + Math.round(n/1e3) + 'K' : '$' + Math.round(n);
+const num = n => Math.round(n).toLocaleString('en-US');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (t, a = {}) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+const txt = (s, x, y, a = {}) => { const t = el('text', Object.assign({ x, y }, a)); t.textContent = s; return t; };
+const C = { accent: '#1B3FCC', soft: '#C3CDF2', flag: '#B3441E', ink: '#0D1520', muted: '#5F6E7E', rule: '#E4E9EE' };
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function mount(id, draw) {
+  const host = document.getElementById(id);
+  if (!host) return;
+  const render = () => { host.innerHTML = ''; host.appendChild(draw(Math.max(host.clientWidth, 260))); };
+  render();
+  let t; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(render, 120); }).observe(host);
+}
+
+function svg(w, h) {
+  const s = el('svg', { width: '100%', height: h, viewBox: `0 0 ${w} ${h}`, role: 'img' });
+  s.style.display = 'block'; s.style.overflow = 'visible';
+  return s;
+}
+
+function grow(node, attr, from, to, delay) {
+  if (reduce) { node.setAttribute(attr, to); return; }
+  node.setAttribute(attr, from);
+  requestAnimationFrame(() => {
+    node.style.transition = `${attr} .75s cubic-bezier(.2,.8,.25,1) ${delay}ms`;
+    requestAnimationFrame(() => node.setAttribute(attr, to));
+  });
+}
+
+/* ---------- monthly combo ---------- */
+mount('ch-monthly', W => {
+  const H = 300, pad = { t: 14, r: 8, b: 40, l: 54 };
+  const map = new Map(D.monthly.map(m => [m.m, m.rev]));
+  const months = [];
+  for (let y = 2016; y <= 2018; y++) for (let m = 1; m <= 12; m++) {
+    const k = `${y}-${String(m).padStart(2, '0')}`;
+    months.push({ k, y, m, rev: map.get(k) || 0 });
+  }
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const max = Math.max(...months.map(d => d.rev)) * 1.06;
+  const bw = iw / months.length;
+  const x = i => pad.l + i * bw;
+  const y = v => pad.t + ih - (v / max) * ih;
+  const s = svg(W, H);
+  s.setAttribute('aria-label', 'Monthly net revenue, January 2016 to December 2018');
+
+  // sparse region
+  const sparseStart = months.findIndex(d => d.k === '2018-05');
+  s.appendChild(el('rect', { x: x(sparseStart), y: pad.t, width: iw - (x(sparseStart) - pad.l), height: ih, fill: '#B3441E', opacity: .07 }));
+  s.appendChild(txt('sparse — see ledger', x(sparseStart) + 6, pad.t + 15, { 'font-family': 'IBM Plex Mono', 'font-size': 10, fill: C.flag, 'letter-spacing': '.06em' }));
+
+  // gridlines
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4;
+    s.appendChild(el('line', { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), stroke: i ? C.rule : '#CFD6DE' }));
+    s.appendChild(txt(usdK(v), pad.l - 9, y(v) + 4, { 'text-anchor': 'end', 'font-family': 'IBM Plex Mono', 'font-size': 10, fill: C.muted }));
+  }
+
+  months.forEach((d, i) => {
+    if (!d.rev) return;
+    const h = ih - (y(d.rev) - pad.t);
+    const r = el('rect', { x: x(i) + bw * .16, width: bw * .68, y: y(d.rev), height: h, fill: i >= sparseStart ? C.flag : C.accent, opacity: i >= sparseStart ? .85 : 1 });
+    const tt = el('title'); tt.textContent = `${d.k}  ${usd(d.rev)}`; r.appendChild(tt);
+    s.appendChild(r);
+    grow(r, 'height', 0, h, i * 12); grow(r, 'y', pad.t + ih, y(d.rev), i * 12);
+  });
+
+  // 3-month moving average over dense window only
+  const dense = months.slice(0, sparseStart);
+  const pts = dense.map((d, i) => {
+    const w = dense.slice(Math.max(0, i - 2), i + 1);
+    return [x(i) + bw / 2, y(w.reduce((a, b) => a + b.rev, 0) / w.length)];
+  });
+  const path = el('path', { d: 'M' + pts.map(p => p.join(',')).join('L'), fill: 'none', stroke: C.ink, 'stroke-width': 1.8, 'stroke-linejoin': 'round' });
+  s.appendChild(path);
+  if (!reduce) { const L = path.getTotalLength ? 2000 : 0; path.style.strokeDasharray = L; path.style.strokeDashoffset = L; requestAnimationFrame(() => { path.style.transition = 'stroke-dashoffset 1.6s ease .4s'; path.style.strokeDashoffset = 0; }); }
+
+  months.forEach((d, i) => {
+    if (d.m !== 1 && d.m !== 7) return;
+    s.appendChild(txt(`${d.m === 1 ? 'Jan' : 'Jul'} ${String(d.y).slice(2)}`, x(i) + bw / 2, H - pad.b + 17, { 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono', 'font-size': 10, fill: C.muted }));
+  });
+  s.appendChild(txt('— 3-month moving average', pad.l, H - 6, { 'font-family': 'IBM Plex Mono', 'font-size': 10, fill: C.ink }));
+  return s;
+});
+
+/* ---------- generic horizontal bars ---------- */
+function hbars(id, rows, opt = {}) {
+  mount(id, W => {
+    const labelW = Math.min(Math.max(W * .32, 84), 168);
+    const rowH = opt.rowH || 34, pad = 6;
+    const H = rows.length * rowH + pad * 2;
+    const iw = W - labelW - 74;
+    const max = Math.max(...rows.map(r => r.v));
+    const s = svg(W, H);
+    s.setAttribute('aria-label', opt.aria || '');
+    rows.forEach((r, i) => {
+      const y0 = pad + i * rowH;
+      s.appendChild(txt(r.label, labelW - 10, y0 + rowH / 2 + 4, { 'text-anchor': 'end', 'font-size': 12.5, fill: C.ink, 'font-family': 'IBM Plex Sans' }));
+      const w = Math.max((r.v / max) * iw, 1);
+      const bar = el('rect', { x: labelW, y: y0 + 6, height: rowH - 16, width: w, fill: r.color || C.accent });
+      const tt = el('title'); tt.textContent = `${r.label}: ${r.disp}`; bar.appendChild(tt);
+      s.appendChild(bar); grow(bar, 'width', 0, w, i * 70);
+      if (r.v2) {
+        const w2 = (r.v2 / max) * iw;
+        const b2 = el('rect', { x: labelW + w, y: y0 + 6, height: rowH - 16, width: w2, fill: 'url(#hatch)' });
+        s.appendChild(b2); grow(b2, 'width', 0, w2, i * 70);
+        s.appendChild(el('rect', { x: labelW + w, y: y0 + 6, height: rowH - 16, width: w2, fill: 'none', stroke: C.flag, 'stroke-width': .8 }));
+      }
+      s.appendChild(txt(r.disp, W - 4, y0 + rowH / 2 + 4, { 'text-anchor': 'end', 'font-family': 'IBM Plex Mono', 'font-size': 12, 'font-weight': 500, fill: C.ink }));
+    });
+    if (!rows.some(r => r.v2)) return s;
+    const defs = el('defs');
+    const p = el('pattern', { id: 'hatch', width: 5, height: 5, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' });
+    p.appendChild(el('rect', { width: 5, height: 5, fill: '#F8E8E1' }));
+    p.appendChild(el('line', { x1: 0, y1: 0, x2: 0, y2: 5, stroke: C.flag, 'stroke-width': 2 }));
+    defs.appendChild(p); s.appendChild(defs);
+    return s;
+  });
+}
+
+const totalRev = D.kpi.revenue;
+hbars('ch-cat', D.category.map(c => ({ label: c.label.replace(' Bicycles', '').replace(' Bikes', ''), v: c.rev, disp: usdK(c.rev), })), { aria: 'Revenue by category' });
+hbars('ch-brand', D.brand.map(b => ({ label: b.label, v: b.rev, disp: usdK(b.rev) })), { aria: 'Revenue by brand', rowH: 30 });
+hbars('ch-store', D.store.map((b, i) => ({ label: b.label, v: b.rev, disp: usdK(b.rev) })), { aria: 'Revenue by store', rowH: 44 });
+hbars('ch-disc', D.discount_bands.map(b => ({ label: b.label + ' off', v: b.rev, v2: b.leak, disp: usdK(b.rev) + ' + ' + usdK(b.leak), })), { aria: 'Revenue and discount given by discount rate', rowH: 42 });
+hbars('ch-tier', D.price_tiers.map(t => ({ label: t.label, v: t.avg_disc, disp: t.avg_disc.toFixed(2) + '%' })), { aria: 'Average discount by price tier', rowH: 40 });
+
+/* ---------- tables ---------- */
+function table(id, cols, rows) {
+  const t = document.createElement('table');
+  t.innerHTML = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>' +
+    rows.map((r, i) => '<tr>' + r.map((c, j) => j === 0 ? `<td><span class="rank">${String(i + 1).padStart(2, '0')}</span>${c}</td>` : `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  document.getElementById(id).appendChild(t);
+}
+table('tb-prod', ['Product', 'Units', 'Revenue', 'Share'],
+  D.products.map(p => [p.label, num(p.units), usd(p.rev), (p.rev / totalRev * 100).toFixed(1) + '%']));
+table('tb-staff', ['Staff', 'Orders', 'Units', 'Revenue'],
+  D.staff.map(p => [p.label, num(p.orders), num(p.units), usd(p.rev)]));
+</script>
+</body>
+</html>
