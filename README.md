@@ -1,4 +1,4 @@
-# Bike Store — Revenue and Discount Analysis
+# Bike Store: Revenue and Discount Analysis
 
 Migration of a relational sales database from MySQL to SQLite, followed by analysis of revenue mix, store performance and discount behaviour across 1,615 orders and 4,722 order lines.
 
@@ -16,13 +16,13 @@ Migration of a relational sales database from MySQL to SQLite, followed by analy
 
 ## Findings
 
-**Discounting is flat and expensive.** Customers paid $7.69M against a list value of $8.58M — a gap of **$889,872**, or 10.4% of list. Only four discount rates appear anywhere in the data (5%, 7%, 10%, 20%), and average discount depth barely moves across the catalogue: 10.41%–10.63% across four price tiers, 10.21%–11.13% across all seven categories. A $200 children's bike and a $6,000 road bike are treated the same. The 20% rate alone covers 25.5% of order lines but produces 47.2% of the total discount given.
+**Discounting is flat and expensive.** Customers paid $7.69M against a list value of $8.58M a gap of **$889,872**, or 10.4% of list. Only four discount rates appear anywhere in the data (5%, 7%, 10%, 20%), and average discount depth barely moves across the catalogue: 10.41%–10.63% across four price tiers, 10.21%–11.13% across all seven categories. A $200 children's bike and a $6,000 road bike are treated the same. The 20% rate alone covers 25.5% of order lines but produces 47.2% of the total discount given.
 
-**Revenue is concentrated in one store and one brand.** Baldwin Bikes (NY) is 67.8% of revenue; two sales reps there account for the store's entire $5.22M. Trek is 59.9% of revenue, with the next brand at 15.7%.
+**Revenue is concentrated in one store and one brand.** Baldwin Bikes (NY) is 67.8% of revenue, two sales reps there account for the store's entire $5.22M. Trek is 59.9% of revenue, with the next brand at 15.7%.
 
 **Volume and value disagree by category.** Cruisers move the most units (2,063) but rank third in revenue. Road Bikes sell a quarter of that volume and out-earn them by $670K.
 
-## Data coverage — read before using these numbers
+## Data coverage: read before using these numbers
 
 The database advertises three calendar years. It contains roughly 28 usable months.
 
@@ -71,7 +71,7 @@ Revenue is computed per order line as `quantity × list_price × (1 - discount)`
 
 ## How to Run
 
-**Migration (optional — only needed to rebuild the database from source):**
+**Migration (optional only needed to rebuild the database from source):**
 - Ensure you have MySQL running with the `bike_store` database, loaded with `00_`–`03_`.
 - Update your credentials in `migrate.py`.
 - Run `python migrate.py`.
