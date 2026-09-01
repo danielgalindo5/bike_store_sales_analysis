@@ -20,7 +20,7 @@ Migration of a relational sales database from MySQL to SQLite, followed by analy
 
 **Revenue is concentrated in one store and one brand.** Baldwin Bikes (NY) is 67.8% of revenue, two sales reps there account for the store's entire $5.22M. Trek is 59.9% of revenue, with the next brand at 15.7%.
 
-**Volume and value disagree by category.** Cruisers move the most units (2,063) but rank third in revenue. Road Bikes sell a quarter of that volume and out-earn them by $670K.
+**Volume and value disagree by category.** Cruisers move the most units (2,063) but rank third in revenue. Road Bikes sell a quarter of that volume and out earn them by $670K.
 
 ## Data coverage: read before using these numbers
 
@@ -34,7 +34,7 @@ The database advertises three calendar years. It contains roughly 28 usable mont
 
 April 2018 is the largest month in the file ($817,922) and sits immediately before the data thins out, so it reads as a boundary artifact rather than a demand spike. Additionally, 170 orders (10.5%) have no shipped date, and 14 of 321 catalogue products were never ordered.
 
-**Rule applied throughout:** totals use all 1,615 orders, but any statement about growth, seasonality or year-over-year change is restricted to Jan 2016 – Apr 2018. A 2018 full-year figure would be wrong by roughly a factor of two.
+**Rule applied throughout:** totals use all 1,615 orders, but any statement about growth, seasonality or year over year change is restricted to Jan 2016 – Apr 2018. A 2018 full year figure would be wrong by roughly a factor of two.
 
 ## Visualizations
 
